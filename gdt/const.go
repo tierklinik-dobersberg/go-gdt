@@ -5,6 +5,9 @@ import "errors"
 // Common error definitions
 var (
 	ErrInvalidLength = errors.New("field has invalid length")
+	ErrUnknownType   = errors.New("unknown field type")
+	ErrFieldNotFound = errors.New("field not found")
+	ErrInvalidType   = errors.New("invalid type for field")
 )
 
 var (

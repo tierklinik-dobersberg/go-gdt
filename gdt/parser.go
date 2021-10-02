@@ -24,10 +24,21 @@ func WithDefaultCharset(m *charmap.Charmap) DecoderOption {
 	}
 }
 
+// WithTypeRegistry configures the type registry that should be used
+// by the GDT decoder. Without this option, the Decoder defautls to
+// DefaultRegistry.
+func WithTypeRegistry(reg *TypeRegistry) DecoderOption {
+	return func(d *Decoder) error {
+		d.typeRegistry = reg
+		return nil
+	}
+}
+
 // Decoder is capable of decoding GDT data.
 type Decoder struct {
-	r           io.Reader
-	charDecoder *encoding.Decoder
+	r            io.Reader
+	charDecoder  *encoding.Decoder
+	typeRegistry *TypeRegistry
 }
 
 type FieldID uint
@@ -41,7 +52,8 @@ type Line struct {
 
 func NewDecoder(r io.Reader, options ...DecoderOption) (*Decoder, error) {
 	d := &Decoder{
-		charDecoder: charmap.CodePage437.NewDecoder(),
+		charDecoder:  charmap.CodePage437.NewDecoder(),
+		typeRegistry: DefaultRegistry,
 	}
 
 	for _, opt := range options {
@@ -51,46 +63,6 @@ func NewDecoder(r io.Reader, options ...DecoderOption) (*Decoder, error) {
 	}
 
 	return d, nil
-}
-
-type File struct {
-	Charset encoding.Encoding
-
-	// Lines holds all lines of the file.
-	Lines []Line
-}
-
-// NewFile creates a File from lines by parsing important ones like
-// 9206 which specify the character set to use.
-func NewFile(lines Lines) *File {
-	var cm encoding.Encoding = charmap.CodePage437
-	if f, ok := lines.GetField(9206); ok {
-		switch f.Content[0] {
-		case '1':
-			cm = encoding.Nop // TODO(ppacher): ASCII-7-bit encoding
-		case '2':
-			cm = charmap.CodePage437
-		case '3':
-			cm = charmap.Windows1252
-		}
-	}
-	return &File{
-		Charset: cm,
-		Lines:   lines,
-	}
-}
-
-// Lines is a slice of lines and provides utility methods.
-type Lines []Line
-
-// GetField returns the field with Field-ID id.
-func (lines Lines) GetField(id FieldID) (Line, bool) {
-	for _, l := range lines {
-		if l.FieldID == id {
-			return l, true
-		}
-	}
-	return Line{}, false
 }
 
 // ReadLines reads all GDT lines stored in the underlying
@@ -103,7 +75,7 @@ func (dec *Decoder) ReadLines() (File, error) {
 			if errors.Is(err, io.EOF) {
 				err = nil
 			}
-			return *NewFile(content), err
+			return *NewFileWithRegistry(content, dec.typeRegistry), err
 		}
 		content = append(content, *l)
 	}

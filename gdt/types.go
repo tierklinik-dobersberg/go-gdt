@@ -44,6 +44,19 @@ func (tr *TypeRegistry) Register(ft FieldType, fn ParseFieldFunc) error {
 	return nil
 }
 
+// ParseValue parses the data encoded in value using the type definition
+// of desc.
+func (tr *TypeRegistry) ParseValue(value []byte, desc *FieldDesc) (interface{}, error) {
+	tr.rl.RLock()
+	defer tr.rl.RUnlock()
+
+	fn, ok := tr.types[desc.Type]
+	if !ok {
+		return nil, ErrUnknownType
+	}
+	return fn(value, desc)
+}
+
 // DefaultRegistry is the default type registry.
 var DefaultRegistry = new(TypeRegistry)
 
