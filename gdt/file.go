@@ -16,7 +16,21 @@ type File struct {
 // NewFile creates a File from lines by parsing important ones like
 // 9206 which specify the character set to use.
 func NewFile(lines Lines) *File {
-	file := NewFileWithRegistry(lines, DefaultRegistry)
+	return NewFileWithRegistry(lines, nil)
+}
+
+// NewFileWithRegistry creates a new GDT file representation that uses
+// reg for known types. Users most commonly only need to use NewFile
+// instead of NewFileWithRegistry.
+func NewFileWithRegistry(lines Lines, reg *TypeRegistry) *File {
+	if reg == nil {
+		reg = DefaultRegistry
+	}
+	file := &File{
+		charset:      charmap.CodePage437,
+		typeRegistry: reg,
+		Lines:        lines,
+	}
 	if val, err := file.IntField(FieldCharacterSet); err == nil { // we drop the error otherwise and let the user handle that
 		switch val {
 		case '1':
@@ -27,22 +41,7 @@ func NewFile(lines Lines) *File {
 			file.charset = charmap.Windows1252
 		}
 	}
-
 	return file
-}
-
-// NewFileWithRegistry creates a new GDT file representation that uses
-// reg for known types. Users most commonly only need to use NewFile
-// instead of NewFileWithRegistry.
-func NewFileWithRegistry(lines Lines, reg *TypeRegistry) *File {
-	if reg == nil {
-		reg = DefaultRegistry
-	}
-	return &File{
-		charset:      charmap.CodePage437,
-		typeRegistry: reg,
-		Lines:        lines,
-	}
 }
 
 // Lines is a slice of lines and provides utility methods.
